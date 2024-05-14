@@ -1,9 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'api.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -46,25 +45,59 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    final url = 'http://192.168.101.19:8000/predict/';
-    final request = http.MultipartRequest('POST', Uri.parse(url));
-    request.files.add(await http.MultipartFile.fromPath('file', _image!.path));
-
-    print('Sending request...');
-    final response = await request.send();
-
-    if (response.statusCode == 200) {
-      print('Request successful');
-      final responseData = await response.stream.bytesToString();
-      final data = jsonDecode(responseData);
-
+    try {
+      final data = await predictFruit(_image!);
+      print('API response received:');
+      print(data);
       setState(() {
         _fruitName = data['name'];
         _calories = data['calories'].toDouble();
         _imageBase64 = data['image_base64'];
       });
-    } else {
-      print('Request failed with status: ${response.statusCode}.');
+    } catch (e) {
+      print('Error predicting fruit: $e');
+
+      // Check if the error is due to image size
+      if (e.toString().contains('The image is too big') ||
+          e.toString().contains('The image is too small')) {
+        // Show pop-up if image size is not suitable for prediction
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text('Prediction Error'),
+              content: Text('The image size is not suitable for prediction.'),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
+      } else {
+        // Show generic error pop-up
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text('Error'),
+              content: Text('Selected image too big or too small.'),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
+      }
     }
   }
 
@@ -110,7 +143,7 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   Text('Fruit: $_fruitName'),
                   Text('Calories: $_calories'),
-                  SizedBox(height:1),
+                  SizedBox(height: 1),
                   if (_imageBase64 != null)
                     Image.memory(
                       base64Decode(_imageBase64!),
