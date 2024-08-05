@@ -13,6 +13,11 @@ class MyApp extends StatelessWidget {
       title: 'Fruit Calorie Estimation',
       debugShowCheckedModeBanner: false,
       home: HomePage(),
+      theme: ThemeData(
+       colorScheme: ColorScheme.fromSeed(
+        seedColor: Colors.deepPurple,
+       )
+    ),
     );
   }
 }
